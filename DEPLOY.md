@@ -21,7 +21,7 @@ This creates one shared JSON state row location for entries, picks, draw data, r
 
 The MVP includes public Supabase config in:
 
-`src/supabase-config.js`
+`assets/supabase-config.js`
 
 Vercel environment variables can still override this later:
 
@@ -41,7 +41,7 @@ The publishable/anon key is designed to be public. This MVP uses Row Level Secur
 3. Framework preset: **Other**.
 4. Build command: leave empty or use `npm run check`.
 5. Output directory: leave empty / project root.
-6. Environment variables are optional for the current MVP because the public Supabase config is committed in `src/supabase-config.js`. To override it, add:
+6. Environment variables are optional for the current MVP because the public Supabase config is committed in `assets/supabase-config.js`. To override it, add:
 
 | Name | Value |
 | --- | --- |
@@ -60,7 +60,7 @@ Everyone with that URL can open the bracket challenge.
 ## How It Works On Vercel
 
 - Static files serve the bracket app.
-- `src/supabase-config.js` exposes the Supabase URL and anon key to the browser.
+- `assets/supabase-config.js` exposes the Supabase URL and anon key to the browser.
 - Supabase stores shared state in `public.app_state`.
 
 ## Security Note

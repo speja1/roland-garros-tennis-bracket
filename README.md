@@ -8,10 +8,10 @@ The current workspace includes a no-dependency browser prototype:
 
 - `index.html` renders the app shell.
 - `styles.css` handles the responsive tournament UI.
-- `src/data.js` contains sample men's and women's 128-player draws.
-- `src/app.js` handles entries, cascading picks, results, scoring, import/export, and the leaderboard.
+- `assets/data.js` contains sample men's and women's 128-player draws.
+- `assets/app.js` handles entries, cascading picks, results, scoring, import/export, and the leaderboard.
 - `local/server.js` serves the app locally, saves shared state, and exposes an ESPN results sync endpoint.
-- `src/supabase-config.js` contains the public Supabase project config for the MVP.
+- `assets/supabase-config.js` contains the public Supabase project config for the MVP.
 - `render.yaml` makes the app deployable to Render with a persistent disk.
 
 To make the app public for everyone with a link, see `DEPLOY.md`. The cheapest durable path is Vercel + Supabase.

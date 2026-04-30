@@ -11,6 +11,6 @@ for (const file of ["index.html", "styles.css"]) {
   fs.copyFileSync(path.join(root, file), path.join(dist, file));
 }
 
-fs.cpSync(path.join(root, "src"), path.join(dist, "src"), { recursive: true });
+fs.cpSync(path.join(root, "assets"), path.join(dist, "assets"), { recursive: true });
 
 console.log("Built static app in dist/");
