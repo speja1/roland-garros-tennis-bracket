@@ -77,17 +77,6 @@ async function handleApi(request, response) {
     return;
   }
 
-  if (url.pathname === "/api/config.js") {
-    const config = {
-      url: process.env.SUPABASE_URL || "",
-      anonKey: process.env.SUPABASE_ANON_KEY || "",
-      stateId: process.env.SUPABASE_STATE_ID || "rg-2026"
-    };
-
-    send(response, 200, `window.RG_SUPABASE_CONFIG = ${JSON.stringify(config)};`, "application/javascript; charset=utf-8");
-    return;
-  }
-
   if (url.pathname !== "/api/state") {
     send(response, 404, JSON.stringify({ error: "Unknown API route." }));
     return;
