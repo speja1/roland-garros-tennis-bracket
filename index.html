@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Roland-Garros Bracket Challenge</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Bracket Challenge</p>
+        <h1>Roland-Garros 2026</h1>
+      </div>
+      <div class="header-actions">
+        <button class="ghost" id="exportStateButton" type="button">Export</button>
+        <button class="ghost" id="resetButton" type="button">Reset</button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="control-panel">
+        <div class="panel-block">
+          <label for="entryName">Entry name</label>
+          <div class="inline-form">
+            <input id="entryName" type="text" maxlength="40" placeholder="e.g. Clay Court Chaos">
+            <button id="saveEntryButton" type="button">Save Entry</button>
+          </div>
+          <select id="entrySelect" aria-label="Choose saved entry"></select>
+        </div>
+
+        <div class="panel-block">
+          <label>Draw</label>
+          <div class="segmented" role="tablist" aria-label="Choose draw">
+            <button class="active" data-event="MS" type="button">Men</button>
+            <button data-event="WS" type="button">Women</button>
+          </div>
+        </div>
+
+        <div class="panel-block score-card">
+          <div>
+            <span class="muted">Current score</span>
+            <strong id="currentScore">0</strong>
+          </div>
+          <div>
+            <span class="muted">Max possible</span>
+            <strong id="possibleScore">0</strong>
+          </div>
+        </div>
+
+        <div class="panel-block">
+          <div class="lock-row">
+            <div>
+              <strong id="lockStatus">Entries open</strong>
+              <span class="muted">Scoring: 1, 2, 4, 8...</span>
+            </div>
+            <button class="ghost" id="toggleLockButton" type="button">Lock</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="tabs" aria-label="Views">
+        <button class="active" data-view="bracket" type="button">Bracket</button>
+        <button data-view="leaderboard" type="button">Leaderboard</button>
+        <button data-view="results" type="button">Results Admin</button>
+        <button data-view="import" type="button">Import</button>
+      </section>
+
+      <section id="bracketView" class="view active">
+        <div class="section-header">
+          <div>
+            <h2 id="bracketTitle">Men's Singles</h2>
+            <p id="bracketHint">Pick winners from left to right. Later rounds unlock as your picks advance.</p>
+          </div>
+          <button class="ghost" id="autoPickButton" type="button">Autofill Picks</button>
+        </div>
+        <div class="bracket-scroll" id="pickBracket"></div>
+      </section>
+
+      <section id="leaderboardView" class="view">
+        <div class="section-header">
+          <div>
+            <h2>Leaderboard</h2>
+            <p>Scores update automatically from completed match results.</p>
+          </div>
+        </div>
+        <div class="leaderboard" id="leaderboard"></div>
+      </section>
+
+      <section id="resultsView" class="view">
+        <div class="section-header">
+          <div>
+            <h2>Results Admin</h2>
+            <p>Mark official winners here. This is where an ESPN/Sportradar import will write later.</p>
+          </div>
+          <div class="header-actions">
+            <button class="ghost" id="syncEspnButton" type="button">Sync ESPN</button>
+            <button class="ghost" id="simulateRoundButton" type="button">Simulate Next Round</button>
+          </div>
+        </div>
+        <p class="sync-status" id="syncStatus">Auto-sync checks ESPN every 5 minutes when the Node server is running.</p>
+        <div class="bracket-scroll" id="resultsBracket"></div>
+      </section>
+
+      <section id="importView" class="view">
+        <div class="section-header">
+          <div>
+            <h2>Data Import</h2>
+            <p>Paste normalized draw JSON from ESPN, Roland-Garros, Sportradar, or a manual file.</p>
+          </div>
+        </div>
+        <textarea id="importText" spellcheck="false" placeholder='{"eventCode":"MS","slots":[{"slotIndex":0,"playerName":"J. Sinner","seed":1}]}'></textarea>
+        <div class="import-actions">
+          <button id="importDrawButton" type="button">Import Draw</button>
+          <button class="ghost" id="loadSampleButton" type="button">Load Sample JSON</button>
+        </div>
+        <pre id="importMessage"></pre>
+      </section>
+    </main>
+
+    <script src="src/data.js"></script>
+    <script src="src/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "roland-garros-bracket-challenge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "No-dependency Roland-Garros bracket challenge prototype.",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check src/data.js && node --check src/app.js"
+  }
+}
