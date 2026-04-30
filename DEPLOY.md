@@ -61,6 +61,7 @@ Everyone with that URL can open the bracket challenge.
 
 - Static files serve the bracket app.
 - `assets/supabase-config.js` exposes the Supabase URL and anon key to the browser.
+- `index.js` serves the Vercel app and exposes `/api/sync/espn`.
 - Supabase stores shared state in `public.app_state`.
 
 ## Security Note

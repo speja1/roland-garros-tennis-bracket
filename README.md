@@ -11,6 +11,7 @@ The current workspace includes a no-dependency browser prototype:
 - `assets/data.js` contains sample men's and women's 128-player draws.
 - `assets/app.js` handles entries, cascading picks, results, scoring, import/export, and the leaderboard.
 - `local/server.js` serves the app locally, saves shared state, and exposes an ESPN results sync endpoint.
+- `index.js` serves the Vercel deployment and exposes the ESPN result sync endpoint.
 - `assets/supabase-config.js` contains the public Supabase project config for the MVP.
 - `render.yaml` makes the app deployable to Render with a persistent disk.
 
