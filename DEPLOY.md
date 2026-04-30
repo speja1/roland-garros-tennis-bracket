@@ -17,14 +17,19 @@ This path can run on free tiers for a friend-group MVP.
 
 This creates one shared JSON state row location for entries, picks, draw data, results, and leaderboard data.
 
-### 2. Copy Supabase Values
+### 2. Supabase Values
 
-In Supabase, go to **Project Settings** -> **API** and copy:
+The MVP includes public Supabase config in:
 
-- Project URL
-- `anon` public API key
+`src/supabase-config.js`
 
-The anon key is designed to be public. This MVP uses Row Level Security policies in `db/supabase-app-state.sql` to allow public read/write access only for the `rg-2026` state row.
+Vercel environment variables can still override this later:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_STATE_ID`
+
+The publishable/anon key is designed to be public. This MVP uses Row Level Security policies in `db/supabase-app-state.sql` to allow public read/write access only for the `rg-2026` state row.
 
 ### 3. Deploy On Vercel
 
@@ -36,7 +41,7 @@ The anon key is designed to be public. This MVP uses Row Level Security policies
 3. Framework preset: **Other**.
 4. Build command: leave empty or use `npm run check`.
 5. Output directory: leave empty / project root.
-6. Add environment variables:
+6. Environment variables are optional for the current MVP because the public Supabase config is committed in `src/supabase-config.js`. To override it, add:
 
 | Name | Value |
 | --- | --- |

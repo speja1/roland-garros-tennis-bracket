@@ -12,6 +12,7 @@ The current workspace includes a no-dependency browser prototype:
 - `src/app.js` handles entries, cascading picks, results, scoring, import/export, and the leaderboard.
 - `server.js` serves the app, saves shared state, and exposes an ESPN results sync endpoint.
 - `api/config.js` and `api/sync/espn.js` make the app deployable to Vercel with Supabase persistence.
+- `src/supabase-config.js` contains the public Supabase project config for the MVP.
 - `render.yaml` makes the app deployable to Render with a persistent disk.
 
 To make the app public for everyone with a link, see `DEPLOY.md`. The cheapest durable path is Vercel + Supabase.
