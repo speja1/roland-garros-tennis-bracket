@@ -5,7 +5,7 @@
   "description": "No-dependency Roland-Garros bracket challenge prototype.",
   "scripts": {
     "build": "node scripts/build.js",
-    "start": "node server.js",
-    "check": "node --check server.js && node --check lib/espnSync.js && node --check src/data.js && node --check src/app.js"
+    "start": "node local/server.js",
+    "check": "node --check local/server.js && node --check lib/espnSync.js && node --check src/data.js && node --check src/app.js"
   }
 }

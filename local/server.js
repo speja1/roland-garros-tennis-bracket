@@ -1,9 +1,9 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const { fetchEspnSync } = require("./lib/espnSync");
+const { fetchEspnSync } = require("../lib/espnSync");
 
-const root = __dirname;
+const root = path.join(__dirname, "..");
 const dataDir = process.env.DATA_DIR || path.join(root, "data");
 const stateFile = path.join(dataDir, "state.json");
 const port = Number(process.env.PORT || 4173);

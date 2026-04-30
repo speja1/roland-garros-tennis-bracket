@@ -10,7 +10,7 @@ The current workspace includes a no-dependency browser prototype:
 - `styles.css` handles the responsive tournament UI.
 - `src/data.js` contains sample men's and women's 128-player draws.
 - `src/app.js` handles entries, cascading picks, results, scoring, import/export, and the leaderboard.
-- `server.js` serves the app, saves shared state, and exposes an ESPN results sync endpoint.
+- `local/server.js` serves the app locally, saves shared state, and exposes an ESPN results sync endpoint.
 - `src/supabase-config.js` contains the public Supabase project config for the MVP.
 - `render.yaml` makes the app deployable to Render with a persistent disk.
 
