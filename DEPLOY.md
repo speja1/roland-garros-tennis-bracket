@@ -1,6 +1,71 @@
 # Public Deployment
 
-The quickest durable public link for this MVP is Render with a persistent disk.
+The cheapest durable public link for this MVP is Vercel + Supabase.
+
+## Deploy On Vercel + Supabase
+
+This path can run on free tiers for a friend-group MVP.
+
+### 1. Create Supabase Project
+
+1. Go to Supabase.
+2. Create a new project.
+3. Open **SQL Editor**.
+4. Paste and run the SQL from:
+
+`db/supabase-app-state.sql`
+
+This creates one shared JSON state row location for entries, picks, draw data, results, and leaderboard data.
+
+### 2. Copy Supabase Values
+
+In Supabase, go to **Project Settings** -> **API** and copy:
+
+- Project URL
+- `anon` public API key
+
+The anon key is designed to be public. This MVP uses Row Level Security policies in `db/supabase-app-state.sql` to allow public read/write access only for the `rg-2026` state row.
+
+### 3. Deploy On Vercel
+
+1. Go to Vercel.
+2. Import the GitHub repository:
+
+`speja1/roland-garros-tennis-bracket`
+
+3. Framework preset: **Other**.
+4. Build command: leave empty or use `npm run check`.
+5. Output directory: leave empty / project root.
+6. Add environment variables:
+
+| Name | Value |
+| --- | --- |
+| `SUPABASE_URL` | Your Supabase Project URL |
+| `SUPABASE_ANON_KEY` | Your Supabase anon public key |
+| `SUPABASE_STATE_ID` | `rg-2026` |
+
+7. Deploy.
+
+Vercel will create a public URL like:
+
+`https://roland-garros-tennis-bracket.vercel.app`
+
+Everyone with that URL can open the bracket challenge.
+
+## How It Works On Vercel
+
+- Static files serve the bracket app.
+- `api/config.js` exposes the Supabase URL and anon key to the browser.
+- `api/sync/espn.js` fetches ESPN scoreboard JSON server-side.
+- Supabase stores shared state in `public.app_state`.
+
+## Security Note
+
+This is intentionally simple for a private friend group. Anyone with the link can technically write to the shared state row. Before using this for a larger public pool, split the state into real tables and add authentication/admin-only policies.
+
+## Alternative: Deploy On Render
+
+Render is easier with the current Node server, but durable storage costs more than the Vercel + Supabase path.
 
 ## Deploy On Render
 

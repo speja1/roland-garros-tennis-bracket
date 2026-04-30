@@ -6,6 +6,7 @@
 
   const state = loadState();
   let remoteReady = false;
+  let remoteBackend = null;
   let activeEvent = "MS";
   let activeView = "bracket";
 
@@ -56,26 +57,89 @@
   function saveRemoteState() {
     if (!remoteReady || !location.protocol.startsWith("http")) return;
 
-    fetch("/api/state", {
+    const save = remoteBackend === "supabase"
+      ? saveSupabaseState()
+      : saveNodeState();
+
+    save.catch(() => {
+      remoteReady = false;
+    });
+  }
+
+  function supabaseConfig() {
+    const config = window.RG_SUPABASE_CONFIG || {};
+    if (!config.url || !config.anonKey) return null;
+    return {
+      url: config.url.replace(/\/$/, ""),
+      anonKey: config.anonKey,
+      stateId: config.stateId || "rg-2026"
+    };
+  }
+
+  function supabaseHeaders(config) {
+    return {
+      "apikey": config.anonKey,
+      "authorization": `Bearer ${config.anonKey}`,
+      "content-type": "application/json"
+    };
+  }
+
+  async function loadSupabaseState(config) {
+    const response = await fetch(`${config.url}/rest/v1/app_state?id=eq.${encodeURIComponent(config.stateId)}&select=state&limit=1`, {
+      headers: supabaseHeaders(config)
+    });
+    if (!response.ok) throw new Error("Supabase state load failed.");
+    const rows = await response.json();
+    return rows[0]?.state || null;
+  }
+
+  async function saveSupabaseState() {
+    const config = supabaseConfig();
+    if (!config) return;
+
+    const response = await fetch(`${config.url}/rest/v1/app_state?on_conflict=id`, {
+      method: "POST",
+      headers: {
+        ...supabaseHeaders(config),
+        "prefer": "resolution=merge-duplicates,return=minimal"
+      },
+      body: JSON.stringify({
+        id: config.stateId,
+        state,
+        updated_at: new Date().toISOString()
+      })
+    });
+
+    if (!response.ok) throw new Error("Supabase state save failed.");
+  }
+
+  async function loadNodeState() {
+    const response = await fetch("/api/state");
+    if (!response.ok) throw new Error("Local state load failed.");
+    const payload = await response.json();
+    return payload.state || null;
+  }
+
+  async function saveNodeState() {
+    const response = await fetch("/api/state", {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(state)
-    }).catch(() => {
-      remoteReady = false;
     });
+    if (!response.ok) throw new Error("Local state save failed.");
   }
 
   async function hydrateFromServer() {
     if (!location.protocol.startsWith("http")) return;
 
     try {
-      const response = await fetch("/api/state");
-      if (!response.ok) return;
-      const payload = await response.json();
+      const config = supabaseConfig();
+      const sharedState = config ? await loadSupabaseState(config) : await loadNodeState();
+      remoteBackend = config ? "supabase" : "node";
       remoteReady = true;
 
-      if (payload.state) {
-        Object.assign(state, normalizeState(payload.state));
+      if (sharedState) {
+        Object.assign(state, normalizeState(sharedState));
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         render();
       } else {
