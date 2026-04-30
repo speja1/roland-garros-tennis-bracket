@@ -12,21 +12,35 @@
         <p class="eyebrow">Bracket Challenge</p>
         <h1>Roland-Garros 2026</h1>
       </div>
-      <div class="header-actions">
+      <div class="header-actions admin-only">
         <button class="ghost" id="exportStateButton" type="button">Export</button>
         <button class="ghost" id="resetButton" type="button">Reset</button>
       </div>
     </header>
 
     <main class="app-shell">
+      <section class="flow-panel">
+        <div>
+          <h2>Make Your Picks</h2>
+          <p id="flowMessage">Enter a bracket name, pick winners, then submit. Your private edit link appears after submission.</p>
+        </div>
+        <div class="edit-link-panel" id="editLinkPanel" hidden>
+          <label for="editLink">Private edit link</label>
+          <div class="inline-form">
+            <input id="editLink" type="text" readonly>
+            <button class="ghost" id="copyEditLinkButton" type="button">Copy</button>
+          </div>
+        </div>
+      </section>
+
       <section class="control-panel">
         <div class="panel-block">
           <label for="entryName">Entry name</label>
           <div class="inline-form">
             <input id="entryName" type="text" maxlength="40" placeholder="e.g. Clay Court Chaos">
-            <button id="saveEntryButton" type="button">Save Entry</button>
+            <button id="saveEntryButton" type="button">Submit Picks</button>
           </div>
-          <select id="entrySelect" aria-label="Choose saved entry"></select>
+          <select class="admin-only" id="entrySelect" aria-label="Choose saved entry"></select>
         </div>
 
         <div class="panel-block">
@@ -48,7 +62,7 @@
           </div>
         </div>
 
-        <div class="panel-block">
+        <div class="panel-block admin-only">
           <div class="lock-row">
             <div>
               <strong id="lockStatus">Entries open</strong>
@@ -61,9 +75,9 @@
 
       <section class="tabs" aria-label="Views">
         <button class="active" data-view="bracket" type="button">Bracket</button>
-        <button data-view="leaderboard" type="button">Leaderboard</button>
-        <button data-view="results" type="button">Results Admin</button>
-        <button data-view="import" type="button">Import</button>
+        <button data-view="leaderboard" type="button">Group</button>
+        <button class="admin-only" data-view="results" type="button">Results Admin</button>
+        <button class="admin-only" data-view="import" type="button">Import</button>
       </section>
 
       <section id="bracketView" class="view active">
@@ -81,8 +95,18 @@
         <div class="section-header">
           <div>
             <h2>Leaderboard</h2>
-            <p>Scores update automatically from completed match results.</p>
+            <p>Submitted brackets are scored automatically from completed match results.</p>
           </div>
+        </div>
+        <div class="scoring-strip">
+          <span>Round scoring</span>
+          <strong>1</strong>
+          <strong>2</strong>
+          <strong>4</strong>
+          <strong>8</strong>
+          <strong>16</strong>
+          <strong>32</strong>
+          <strong>64</strong>
         </div>
         <div class="leaderboard" id="leaderboard"></div>
       </section>

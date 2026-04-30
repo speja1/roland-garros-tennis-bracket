@@ -3,12 +3,15 @@
   const ROUNDS = ["Round 1", "Round 2", "Round 3", "Round 4", "Quarterfinal", "Semifinal", "Final"];
   const TOTAL_ROUNDS = 7;
   const ESPN_SYNC_WINDOW = "20260524-20260607";
+  const ACCESS_KEY = "rg-bracket-entry-access-v1";
 
   const state = loadState();
   let remoteReady = false;
   let remoteBackend = null;
   let activeEvent = "MS";
   let activeView = "bracket";
+  let draftEntry = null;
+  const isAdminMode = new URLSearchParams(window.location.search).get("admin") === "1";
 
   const $ = (id) => document.getElementById(id);
 
@@ -32,10 +35,10 @@
     });
   }
 
-  function normalizeState(nextState) {
+  function normalizeState(nextState, options = {}) {
     const normalized = {
       locked: Boolean(nextState.locked),
-      currentEntryId: nextState.currentEntryId || null,
+      currentEntryId: options.currentEntryId ?? nextState.currentEntryId ?? null,
       entries: Array.isArray(nextState.entries) ? nextState.entries : [],
       draws: nextState.draws || window.RG_SAMPLE_DRAWS,
       results: nextState.results || { MS: {}, WS: {} }
@@ -46,12 +49,30 @@
       if (!normalized.results[eventCode]) normalized.results[eventCode] = {};
     });
 
+    normalized.entries.forEach((entry) => {
+      if (!entry.editCode) entry.editCode = makeEditCode();
+      if (!entry.picks) entry.picks = { MS: {}, WS: {} };
+      if (!entry.picks.MS) entry.picks.MS = {};
+      if (!entry.picks.WS) entry.picks.WS = {};
+      if (entry.submitted === undefined) entry.submitted = true;
+    });
+
     return normalized;
   }
 
   function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     saveRemoteState();
+  }
+
+  function sharedState() {
+    return {
+      locked: state.locked,
+      currentEntryId: null,
+      entries: state.entries,
+      draws: state.draws,
+      results: state.results
+    };
   }
 
   function saveRemoteState() {
@@ -105,7 +126,7 @@
       },
       body: JSON.stringify({
         id: config.stateId,
-        state,
+        state: sharedState(),
         updated_at: new Date().toISOString()
       })
     });
@@ -124,7 +145,7 @@
     const response = await fetch("/api/state", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(state)
+      body: JSON.stringify(sharedState())
     });
     if (!response.ok) throw new Error("Local state save failed.");
   }
@@ -134,12 +155,13 @@
 
     try {
       const config = supabaseConfig();
-      const sharedState = config ? await loadSupabaseState(config) : await loadNodeState();
+      const incomingState = config ? await loadSupabaseState(config) : await loadNodeState();
       remoteBackend = config ? "supabase" : "node";
       remoteReady = true;
 
-      if (sharedState) {
-        Object.assign(state, normalizeState(sharedState));
+      if (incomingState) {
+        Object.assign(state, normalizeState(incomingState, { currentEntryId: state.currentEntryId }));
+        initializeEntryFromUrl();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         render();
       } else {
@@ -154,6 +176,63 @@
     return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
+  function makeEditCode() {
+    return Math.random().toString(36).slice(2, 6).toUpperCase() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+  }
+
+  function getAccessMap() {
+    try {
+      return JSON.parse(localStorage.getItem(ACCESS_KEY) || "{}");
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function rememberEntryAccess(entry) {
+    if (!entry?.id || !entry.editCode) return;
+    const access = getAccessMap();
+    access[entry.id] = entry.editCode;
+    localStorage.setItem(ACCESS_KEY, JSON.stringify(access));
+  }
+
+  function canEditEntry(entry) {
+    if (!entry) return false;
+    if (isAdminMode) return true;
+    if (!entry.editCode) return false;
+    return getAccessMap()[entry.id] === entry.editCode;
+  }
+
+  function entryEditUrl(entry) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("admin");
+    url.searchParams.set("entry", entry.id);
+    url.searchParams.set("code", entry.editCode);
+    return url.toString();
+  }
+
+  function createEntry(name) {
+    return {
+      id: makeId("entry"),
+      name: name || "My Bracket",
+      editCode: makeEditCode(),
+      submitted: false,
+      createdAt: new Date().toISOString(),
+      picks: { MS: {}, WS: {} }
+    };
+  }
+
+  function initializeEntryFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const entryId = params.get("entry");
+    const editCode = params.get("code");
+    if (!entryId || !editCode) return;
+
+    const entry = state.entries.find((item) => item.id === entryId && item.editCode === editCode);
+    if (!entry) return;
+    state.currentEntryId = entry.id;
+    rememberEntryAccess(entry);
+  }
+
   function getCurrentEntry() {
     return state.entries.find((entry) => entry.id === state.currentEntryId) || null;
   }
@@ -162,16 +241,8 @@
     let entry = getCurrentEntry();
     if (entry) return entry;
 
-    entry = {
-      id: makeId("entry"),
-      name: "My Bracket",
-      createdAt: new Date().toISOString(),
-      picks: { MS: {}, WS: {} }
-    };
-    state.entries.push(entry);
-    state.currentEntryId = entry.id;
-    saveState();
-    return entry;
+    if (!draftEntry) draftEntry = createEntry($("entryName")?.value.trim() || "My Bracket");
+    return draftEntry;
   }
 
   function matchId(eventCode, round, index) {
@@ -231,6 +302,7 @@
   function choosePick(eventCode, round, index, playerId) {
     const entry = ensureEntry();
     if (state.locked) return;
+    if (entry.submitted && !canEditEntry(entry)) return;
 
     const id = matchId(eventCode, round, index);
     entry.picks[eventCode][id] = playerId;
@@ -240,6 +312,7 @@
   }
 
   function chooseResult(eventCode, round, index, playerId) {
+    if (!isAdminMode) return;
     const id = matchId(eventCode, round, index);
     state.results[eventCode][id] = playerId;
     clearInvalidResults(eventCode);
@@ -288,7 +361,7 @@
       const eventCode = sourceMatch.eventCode;
       const round = sourceMatch.round;
       const count = 128 / 2 ** round;
-      if (!state.draws[eventCode] || !round) continue;
+      if (!state.draws[eventCode] || !round || !sourceMatch.completed || !sourceMatch.winnerName) continue;
 
       for (let index = 0; index < count; index += 1) {
         const id = matchId(eventCode, round, index);
@@ -317,6 +390,44 @@
     return applied;
   }
 
+  function applySourceDraw(payload) {
+    let imported = 0;
+
+    ["MS", "WS"].forEach((eventCode) => {
+      const currentDraw = state.draws[eventCode];
+      if (currentDraw?.source === "espn") return;
+
+      const roundOneMatches = (payload.matches || [])
+        .filter((match) => match.eventCode === eventCode && match.round === 1 && match.players?.length >= 2)
+        .sort((a, b) => String(a.sourceMatchId).localeCompare(String(b.sourceMatchId)));
+
+      if (roundOneMatches.length < 64) return;
+
+      const players = roundOneMatches.slice(0, 64).flatMap((match) => match.players.slice(0, 2)).map((player, slotIndex) => ({
+        id: `${eventCode}-P${String(slotIndex + 1).padStart(3, "0")}`,
+        name: player.name || `Slot ${slotIndex + 1}`,
+        seed: null,
+        slotIndex
+      }));
+
+      state.draws[eventCode] = {
+        eventCode,
+        name: eventCode === "MS" ? "Men's Singles" : "Women's Singles",
+        source: "espn",
+        sourceUrl: "https://site.api.espn.com/apis/site/v2/sports/tennis/atp/scoreboard",
+        players
+      };
+      state.results[eventCode] = {};
+      state.entries.forEach((entry) => {
+        entry.picks[eventCode] = {};
+      });
+      if (draftEntry) draftEntry.picks[eventCode] = {};
+      imported += 1;
+    });
+
+    return imported;
+  }
+
   async function syncEspnResults(showStatus = true) {
     const status = $("syncStatus");
     if (!location.protocol.startsWith("http")) {
@@ -329,8 +440,10 @@
       const response = await fetch(`/api/sync/espn?dates=${ESPN_SYNC_WINDOW}&tournament=Roland%20Garros`);
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "ESPN sync failed.");
+      const imported = applySourceDraw(payload);
       const applied = applySourceResults(payload);
-      status.textContent = `ESPN sync checked ${payload.matches.length} completed matches and applied ${applied} result${applied === 1 ? "" : "s"}.`;
+      if (imported || applied) saveState();
+      status.textContent = `ESPN sync checked ${payload.matches.length} matches, imported ${imported} draw${imported === 1 ? "" : "s"}, and applied ${applied} result${applied === 1 ? "" : "s"}.`;
     } catch (error) {
       status.textContent = `ESPN sync failed: ${error.message}`;
     }
@@ -382,6 +495,7 @@
   }
 
   function render() {
+    renderAdminVisibility();
     renderEntryControls();
     renderTabs();
     renderBracket();
@@ -389,12 +503,24 @@
     renderLeaderboard();
   }
 
+  function renderAdminVisibility() {
+    document.querySelectorAll(".admin-only").forEach((element) => {
+      element.hidden = !isAdminMode;
+    });
+
+    if (!isAdminMode && ["results", "import"].includes(activeView)) {
+      activeView = "bracket";
+    }
+  }
+
   function renderEntryControls() {
-    const entry = getCurrentEntry();
+    const entry = getCurrentEntry() || draftEntry;
+    const canEdit = !entry || !entry.submitted || canEditEntry(entry);
     $("entryName").value = entry?.name || "";
-    $("entryName").disabled = state.locked;
-    $("saveEntryButton").disabled = state.locked;
-    $("autoPickButton").disabled = state.locked;
+    $("entryName").disabled = state.locked || !canEdit;
+    $("saveEntryButton").disabled = state.locked || !canEdit;
+    $("saveEntryButton").textContent = entry?.submitted ? "Update Picks" : "Submit Picks";
+    $("autoPickButton").disabled = state.locked || !canEdit;
 
     $("entrySelect").innerHTML = [
       `<option value="">New entry</option>`,
@@ -406,6 +532,22 @@
     $("possibleScore").textContent = currentScore.possible;
     $("lockStatus").textContent = state.locked ? "Entries locked" : "Entries open";
     $("toggleLockButton").textContent = state.locked ? "Unlock" : "Lock";
+
+    const submittedEntry = getCurrentEntry();
+    const editPanel = $("editLinkPanel");
+    const editLink = $("editLink");
+    if (submittedEntry && canEditEntry(submittedEntry)) {
+      editPanel.hidden = false;
+      editLink.value = entryEditUrl(submittedEntry);
+      $("flowMessage").textContent = state.locked
+        ? "Your bracket is locked. You can still view scores and the group leaderboard."
+        : "Your bracket is submitted. Save this private edit link if you want to update picks before lock.";
+    } else {
+      editPanel.hidden = true;
+      $("flowMessage").textContent = state.locked
+        ? "Entries are locked. View the live bracket and group leaderboard."
+        : "Enter a bracket name, pick winners, then submit. Your private edit link appears after submission.";
+    }
 
     document.querySelectorAll(".segmented button").forEach((button) => {
       button.classList.toggle("active", button.dataset.event === activeEvent);
@@ -420,7 +562,8 @@
     document.querySelectorAll(".view").forEach((view) => {
       view.classList.remove("active");
     });
-    $(`${activeView}View`).classList.add("active");
+    const targetView = $(`${activeView}View`);
+    if (targetView) targetView.classList.add("active");
   }
 
   function renderBracket() {
@@ -434,7 +577,8 @@
       mode: "pick",
       entry,
       eventCode: activeEvent,
-      onClickName: "pickWinner"
+      onClickName: "pickWinner",
+      editable: !state.locked && (!entry.submitted || canEditEntry(entry))
     });
   }
 
@@ -471,8 +615,8 @@
               <span>${ROUNDS[round - 1]}</span>
               <span>${pointsForRound(round)} pt${pointsForRound(round) === 1 ? "" : "s"}</span>
             </div>
-            ${renderPlayerButton({ player: a, id, selectedId, actualId, onClickName, eventCode, round, index, mode })}
-            ${renderPlayerButton({ player: b, id, selectedId, actualId, onClickName, eventCode, round, index, mode })}
+            ${renderPlayerButton({ player: a, id, selectedId, actualId, onClickName, eventCode, round, index, mode, editable: options.editable })}
+            ${renderPlayerButton({ player: b, id, selectedId, actualId, onClickName, eventCode, round, index, mode, editable: options.editable })}
           </article>
         `);
       }
@@ -489,8 +633,8 @@
   }
 
   function renderPlayerButton(context) {
-    const { player, selectedId, actualId, onClickName, eventCode, round, index, mode } = context;
-    const disabled = !player || (mode === "pick" && state.locked);
+    const { player, selectedId, actualId, onClickName, eventCode, round, index, mode, editable } = context;
+    const disabled = !player || (mode === "pick" && !editable);
     const selected = player && selectedId === player.id;
     const actual = player && actualId === player.id;
     const wrong = mode === "pick" && selected && actualId && actualId !== player.id;
@@ -511,6 +655,7 @@
 
   function renderLeaderboard() {
     const rows = state.entries
+      .filter((entry) => entry.submitted)
       .map((entry) => ({ entry, score: scoreEntry(entry) }))
       .sort((a, b) => b.score.total - a.score.total || b.score.possible - a.score.possible || a.entry.name.localeCompare(b.entry.name));
 
@@ -523,24 +668,32 @@
             <span class="leader-stat possible"><strong>${row.score.possible}</strong><span class="muted">possible</span></span>
           </div>
         `).join("")
-      : `<p class="muted">No entries yet. Save an entry to start the leaderboard.</p>`;
+      : `<p class="muted">No submitted entries yet. Submit your picks to start the group.</p>`;
   }
 
   function saveEntryFromForm() {
     const name = $("entryName").value.trim() || "My Bracket";
     let entry = getCurrentEntry();
 
-    if (!entry || $("entrySelect").value === "") {
-      entry = {
-        id: makeId("entry"),
-        name,
-        createdAt: new Date().toISOString(),
-        picks: { MS: {}, WS: {} }
-      };
+    if (state.locked) return;
+
+    if (entry && entry.submitted && !canEditEntry(entry)) return;
+
+    if (!entry || (isAdminMode && $("entrySelect").value === "")) {
+      entry = draftEntry || createEntry(name);
+      entry.name = name;
+      entry.submitted = true;
+      entry.submittedAt = new Date().toISOString();
       state.entries.push(entry);
       state.currentEntryId = entry.id;
+      draftEntry = null;
+      rememberEntryAccess(entry);
     } else {
       entry.name = name;
+      entry.submitted = true;
+      entry.submittedAt = entry.submittedAt || new Date().toISOString();
+      entry.updatedAt = new Date().toISOString();
+      rememberEntryAccess(entry);
     }
 
     saveState();
@@ -565,6 +718,7 @@
   }
 
   function simulateNextRound() {
+    if (!isAdminMode) return;
     for (let round = 1; round <= TOTAL_ROUNDS; round += 1) {
       const count = 128 / 2 ** round;
       const pending = [];
@@ -597,6 +751,7 @@
   }
 
   function importDraw() {
+    if (!isAdminMode) return;
     const message = $("importMessage");
     try {
       const data = JSON.parse($("importText").value);
@@ -652,6 +807,7 @@
   }
 
   function exportState() {
+    if (!isAdminMode) return;
     $("importText").value = JSON.stringify(state, null, 2);
     activeView = "import";
     $("importMessage").textContent = "Full local app state exported below.";
@@ -659,10 +815,25 @@
   }
 
   function resetState() {
+    if (!isAdminMode) return;
     const confirmed = window.confirm("Reset all local entries, picks, results, and imported draws?");
     if (!confirmed) return;
     localStorage.removeItem(STORAGE_KEY);
     window.location.reload();
+  }
+
+  async function copyEditLink() {
+    const link = $("editLink").value;
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      $("copyEditLinkButton").textContent = "Copied";
+      window.setTimeout(() => {
+        $("copyEditLinkButton").textContent = "Copy";
+      }, 1600);
+    } catch (error) {
+      $("editLink").select();
+    }
   }
 
   function escapeHtml(value) {
@@ -685,17 +856,27 @@
       render();
     });
     $("toggleLockButton").addEventListener("click", () => {
+      if (!isAdminMode) return;
       state.locked = !state.locked;
       saveState();
       render();
     });
     $("autoPickButton").addEventListener("click", autoPickEntry);
-    $("simulateRoundButton").addEventListener("click", simulateNextRound);
+    $("simulateRoundButton").addEventListener("click", () => {
+      if (isAdminMode) simulateNextRound();
+    });
     $("syncEspnButton").addEventListener("click", () => syncEspnResults(true));
-    $("importDrawButton").addEventListener("click", importDraw);
-    $("loadSampleButton").addEventListener("click", loadSampleImportJson);
-    $("exportStateButton").addEventListener("click", exportState);
+    $("importDrawButton").addEventListener("click", () => {
+      if (isAdminMode) importDraw();
+    });
+    $("loadSampleButton").addEventListener("click", () => {
+      if (isAdminMode) loadSampleImportJson();
+    });
+    $("exportStateButton").addEventListener("click", () => {
+      if (isAdminMode) exportState();
+    });
     $("resetButton").addEventListener("click", resetState);
+    $("copyEditLinkButton").addEventListener("click", copyEditLink);
 
     document.querySelectorAll(".segmented button").forEach((button) => {
       button.addEventListener("click", () => {
@@ -716,7 +897,7 @@
   window.resultWinner = chooseResult;
 
   bindEvents();
-  ensureEntry();
+  initializeEntryFromUrl();
   render();
   hydrateFromServer();
   window.setInterval(() => syncEspnResults(false), 5 * 60 * 1000);
