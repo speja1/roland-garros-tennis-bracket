@@ -319,8 +319,13 @@
 
   async function syncEspnResults(showStatus = true) {
     const status = $("syncStatus");
+    if (location.hostname.includes("vercel.app")) {
+      status.textContent = "ESPN sync is temporarily disabled on the free Vercel build. Manual results still work.";
+      return;
+    }
+
     if (!location.protocol.startsWith("http")) {
-      status.textContent = "ESPN sync needs the Node server. Run npm start, then open the localhost URL.";
+      status.textContent = "ESPN sync needs the local Node server. Run npm start, then open the localhost URL.";
       return;
     }
 

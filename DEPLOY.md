@@ -61,7 +61,6 @@ Everyone with that URL can open the bracket challenge.
 
 - Static files serve the bracket app.
 - `src/supabase-config.js` exposes the Supabase URL and anon key to the browser.
-- `api/sync/espn.js` fetches ESPN scoreboard JSON server-side.
 - Supabase stores shared state in `public.app_state`.
 
 ## Security Note
